@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_HUB_USER = 'code9x'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git 'https://github.com/Code9X/CICD-Jenkins-Docker'
+            }
+        }
+
+        stage('Build React Frontend') {
+            steps {
+                dir('BookingWiz_Web') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Build .NET Backend') {
+            steps {
+                dir('BookingWiz_Admin') {
+                    sh 'dotnet restore'
+                    sh 'dotnet build --configuration Release'
+                    sh 'dotnet publish -c Release -o out'
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                sh 'docker build -t $DOCKER_HUB_USER/bookingwiz-frontend:latest -f BookingWiz_Web/Dockerfile .'
+                sh 'docker build -t $DOCKER_HUB_USER/bookingwiz_admin:latest -f BookingWiz_Admin/Dockerfile .'
+            }
+        }
+
+        stage('Push Docker Images') {
+            steps {
+                withCredentials([string(credentialsId: 'docker-hub-password', variable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_HUB_USER --password-stdin'
+                    sh 'docker push $DOCKER_HUB_USER/bookingwiz-frontend:latest'
+                    sh 'docker push $DOCKER_HUB_USER/bookingwiz_admin:latest'
+                }
+            }
+        }
+
+        stage('Deploy without Docker Compose') {
+            steps {
+                sh '''
+                docker stop bookingwiz-frontend || true
+                docker rm bookingwiz-frontend || true
+                docker pull $DOCKER_HUB_USER/bookingwiz-frontend:latest
+                docker run -d -p 3000:80 --name bookingwiz-frontend $DOCKER_HUB_USER/bookingwiz-frontend:latest
+
+                docker stop bookingwiz-backend || true
+                docker rm bookingwiz-backend || true
+                docker pull $DOCKER_HUB_USER/bookingwiz_admin:latest
+                docker run -d -p 7001:8080 --name bookingwiz-backend -v ./Images:/app/Images $DOCKER_HUB_USER/bookingwiz_admin:latest
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker system prune -f'
+        }
+    }
+}

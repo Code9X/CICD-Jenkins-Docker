@@ -1,0 +1,83 @@
+/* Base styles */
+.navbar {
+    background-color: skyblue;
+    padding: 10px 20px;
+  }
+  
+  .navbar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .navbar-logo {
+    color: white;
+    font-style: italic;
+    font-size: 1.5rem;
+    text-decoration: none;
+  }
+  
+  .navbar-hamburger {
+    display: none;
+    font-size: 2rem;
+    color: white;
+    cursor: pointer;
+  }
+  
+  .navbar-links {
+    display: flex;
+    align-items: center;
+  }
+  
+  .navbar-item {
+    color: white;
+    margin-right: 20px;
+    text-decoration: none;
+    font-size: 1rem;
+  }
+  
+  .navbar-account {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: white;
+    color: skyblue;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .navbar-hamburger {
+      display: block;
+    }
+  
+    .navbar-links {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      align-items: flex-start;
+      background-color: skyblue;
+      position: absolute;
+      top: 60px;
+      left: 0;
+      padding: 10px 0;
+    }
+  
+    .navbar-links.active {
+      display: flex;
+    }
+  
+    .navbar-item {
+      margin: 10px 20px;
+    }
+  
+    .navbar-account {
+      margin: 10px 20px;
+    }
+  }
+  

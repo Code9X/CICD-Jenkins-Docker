@@ -1,0 +1,13 @@
+# Ignore Visual Studio files
+.vs/
+
+# Node.js
+node_modules/
+build/
+
+# .NET
+bin/
+obj/
+
+# General
+*.log

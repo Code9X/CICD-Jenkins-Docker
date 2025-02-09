@@ -1,0 +1,6 @@
+@BookingWiz_Admin_HostAddress = http://localhost:5205
+
+GET {{BookingWiz_Admin_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
