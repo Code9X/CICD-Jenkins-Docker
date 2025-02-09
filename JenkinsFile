@@ -8,15 +8,21 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/Code9X/CICD-Jenkins-Docker'
+                withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PAT')]) {
+                    sh 'git clone https://$GITHUB_USER:$GITHUB_PAT@github.com/Code9X/CICD-Jenkins-Docker.git .'
+                }
             }
         }
 
         stage('Build React Frontend') {
             steps {
                 dir('BookingWiz_Web') {
-                    sh 'npm install'
-                    sh 'npm run build'
+                    sh '''
+                    echo "Installing React dependencies..."
+                    npm install
+                    echo "Building React frontend..."
+                    npm run build
+                    '''
                 }
             }
         }
@@ -24,26 +30,39 @@ pipeline {
         stage('Build .NET Backend') {
             steps {
                 dir('BookingWiz_Admin') {
-                    sh 'dotnet restore'
-                    sh 'dotnet build --configuration Release'
-                    sh 'dotnet publish -c Release -o out'
+                    sh '''
+                    echo "Restoring .NET dependencies..."
+                    dotnet restore
+                    echo "Building .NET backend..."
+                    dotnet build --configuration Release
+                    echo "Publishing .NET application..."
+                    dotnet publish -c Release -o out
+                    '''
                 }
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                sh 'docker build -t $DOCKER_HUB_USER/bookingwiz-frontend:latest -f BookingWiz_Web/Dockerfile .'
-                sh 'docker build -t $DOCKER_HUB_USER/bookingwiz_admin:latest -f BookingWiz_Admin/Dockerfile .'
+                sh '''
+                echo "Building Docker images..."
+                docker build -t $DOCKER_HUB_USER/bookingwiz-frontend:latest -f BookingWiz_Web/Dockerfile .
+                docker build -t $DOCKER_HUB_USER/bookingwiz_admin:latest -f BookingWiz_Admin/Dockerfile .
+                '''
             }
         }
 
         stage('Push Docker Images') {
             steps {
                 withCredentials([string(credentialsId: 'docker-hub-password', variable: 'DOCKER_PASS')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_HUB_USER --password-stdin'
-                    sh 'docker push $DOCKER_HUB_USER/bookingwiz-frontend:latest'
-                    sh 'docker push $DOCKER_HUB_USER/bookingwiz_admin:latest'
+                    sh '''
+                    echo "Logging into DockerHub..."
+                    echo $DOCKER_PASS | docker login -u $DOCKER_HUB_USER --password-stdin
+
+                    echo "Pushing Docker images..."
+                    docker push $DOCKER_HUB_USER/bookingwiz-frontend:latest
+                    docker push $DOCKER_HUB_USER/bookingwiz_admin:latest
+                    '''
                 }
             }
         }
@@ -51,15 +70,25 @@ pipeline {
         stage('Deploy without Docker Compose') {
             steps {
                 sh '''
+                echo "Stopping existing frontend container..."
                 docker stop bookingwiz-frontend || true
                 docker rm bookingwiz-frontend || true
+
+                echo "Pulling new frontend image..."
                 docker pull $DOCKER_HUB_USER/bookingwiz-frontend:latest
+
+                echo "Running frontend container..."
                 docker run -d -p 3000:80 --name bookingwiz-frontend $DOCKER_HUB_USER/bookingwiz-frontend:latest
 
+                echo "Stopping existing backend container..."
                 docker stop bookingwiz-backend || true
                 docker rm bookingwiz-backend || true
+
+                echo "Pulling new backend image..."
                 docker pull $DOCKER_HUB_USER/bookingwiz_admin:latest
-                docker run -d -p 7001:8080 --name bookingwiz-backend -v ./Images:/app/Images $DOCKER_HUB_USER/bookingwiz_admin:latest
+
+                echo "Running backend container..."
+                docker run -d -p 7001:8080 --name bookingwiz-backend -v $(pwd)/Images:/app/Images $DOCKER_HUB_USER/bookingwiz_admin:latest
                 '''
             }
         }
@@ -67,7 +96,10 @@ pipeline {
 
     post {
         always {
-            sh 'docker system prune -f'
+            sh '''
+            echo "Cleaning up unused Docker resources..."
+            docker system prune -f
+            '''
         }
     }
 }
