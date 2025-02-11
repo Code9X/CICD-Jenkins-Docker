@@ -9,22 +9,13 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PAT')]) {
-                    sh '''
-                    git config --global credential.helper cache
-                    git config --global user.email "your-email@example.com"
-                    git config --global user.name "Code9X"
-                    git clone https://$GITHUB_USER:$GITHUB_PAT@github.com/Code9X/CICD-Jenkins-Docker.git .
-                    '''
+                    sh 'git clone https://$GITHUB_USER:$GITHUB_PAT@github.com/Code9X/CICD-Jenkins-Docker.git .'
                 }
             }
         }
 
         stage('Build Frontend (React)') {
-            agent {
-                docker {
-                    image 'node:20'
-                }
-            }
+            agent { docker 'node:20' }
             steps {
                 dir('BookingWiz_Web') {
                     sh '''
@@ -38,11 +29,7 @@ pipeline {
         }
 
         stage('Build Backend (.NET)') {
-            agent {
-                docker {
-                    image 'mcr.microsoft.com/dotnet/sdk:8.0'
-                }
-            }
+            agent { docker 'mcr.microsoft.com/dotnet/sdk:8.0' }
             steps {
                 dir('BookingWiz_Admin') {
                     sh '''
@@ -67,29 +54,9 @@ pipeline {
             }
         }
 
-        stage('Push Docker Images') {
-            steps {
-                withCredentials([string(credentialsId: 'docker-hub-password', variable: 'DOCKER_PASS')]) {
-                    sh '''
-                    echo "Logging into DockerHub..."
-                    echo $DOCKER_PASS | docker login -u $DOCKER_HUB_USER --password-stdin
-
-                    echo "Pushing Docker images..."
-                    docker push $DOCKER_HUB_USER/bookingwiz-frontend:latest
-                    docker push $DOCKER_HUB_USER/bookingwiz-admin:latest
-                    '''
-                }
-            }
-        }
-
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    sh '''
-                    echo "Deploying to Kubernetes..."
-                    kubectl apply -f k8s/deployment.yaml
-                    '''
-                }
+                echo 'Deploying to Kubernetes (Placeholder - Will be implemented after Kubeconfig setup)'
             }
         }
     }
