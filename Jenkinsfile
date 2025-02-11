@@ -15,31 +15,33 @@ pipeline {
         }
 
         stage('Build Frontend (React)') {
-            agent { docker 'node:20' }
             steps {
-                dir('BookingWiz_Web') {
-                    sh '''
-                    echo "Installing React dependencies..."
-                    npm install
-                    echo "Building React frontend..."
-                    npm run build
-                    '''
+                script {
+                    docker.image('node:20').inside {
+                        sh '''
+                        echo "Installing React dependencies..."
+                        npm install
+                        echo "Building React frontend..."
+                        npm run build
+                        '''
+                    }
                 }
             }
         }
 
         stage('Build Backend (.NET)') {
-            agent { docker 'mcr.microsoft.com/dotnet/sdk:8.0' }
             steps {
-                dir('BookingWiz_Admin') {
-                    sh '''
-                    echo "Restoring .NET dependencies..."
-                    dotnet restore
-                    echo "Building .NET backend..."
-                    dotnet build --configuration Release
-                    echo "Publishing .NET application..."
-                    dotnet publish -c Release -o out
-                    '''
+                script {
+                    docker.image('mcr.microsoft.com/dotnet/sdk:8.0').inside {
+                        sh '''
+                        echo "Restoring .NET dependencies..."
+                        dotnet restore
+                        echo "Building .NET backend..."
+                        dotnet build --configuration Release
+                        echo "Publishing .NET application..."
+                        dotnet publish -c Release -o out
+                        '''
+                    }
                 }
             }
         }
