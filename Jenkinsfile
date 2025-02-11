@@ -11,48 +11,48 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PAT')]) {
-                    bat "git clone https://%GITHUB_USER%:%GITHUB_PAT%@github.com/Code9X/CICD-Jenkins-Docker.git ."
+                    powershell "git clone https://%GITHUB_USER%:%GITHUB_PAT%@github.com/Code9X/CICD-Jenkins-Docker.git ."
                 }
             }
         }
 
         stage('Build Frontend (React)') {
             steps {
-                bat "npm install"
-                bat "npm run build"
+                powershell "npm install"
+                powershell "npm run build"
             }
         }
 
         stage('Build Backend (.NET)') {
             steps {
-                bat "dotnet restore"
-                bat "dotnet build --configuration Release"
+                powershell "dotnet restore"
+                powershell "dotnet build --configuration Release"
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                bat "docker build -t %DOCKER_IMAGE_FRONTEND% -f BookingWiz_Web/Dockerfile ."
-                bat "docker build -t %DOCKER_IMAGE_BACKEND% -f BookingWiz_Admin/Dockerfile ."
+                powershell "docker build -t %DOCKER_IMAGE_FRONTEND% -f BookingWiz_Web/Dockerfile ."
+                powershell "docker build -t %DOCKER_IMAGE_BACKEND% -f BookingWiz_Admin/Dockerfile ."
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                bat "kubectl apply -f k8s/"
+                powershell "kubectl apply -f k8s/"
             }
         }
     }
 
     post {
         always {
-            bat "echo Pipeline finished with status: %ERRORLEVEL%"
+            powershell "echo Pipeline finished with status: $LASTEXITCODE"
         }
         success {
-            bat "echo Build and deployment successful!"
+            powershell "echo Build and deployment successful!"
         }
         failure {
-            bat "echo Build failed! Check logs for details."
+            powershell "echo Build failed! Check logs for details."
         }
     }
 }
