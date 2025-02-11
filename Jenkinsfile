@@ -1,74 +1,75 @@
 pipeline {
-    agent any
+    agent any  // Runs on any available Jenkins agent
 
     environment {
-        DOCKER_HUB_USER = 'code9x'
+        GITHUB_REPO = 'https://github.com/Code9X/CICD-Jenkins-Docker.git'
+        DOCKER_IMAGE_FRONTEND = 'bookingwiz_frontend'
+        DOCKER_IMAGE_BACKEND = 'bookingwiz_backend'
     }
 
     stages {
         stage('Checkout Code') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PAT')]) {
-                    sh 'git clone https://$GITHUB_USER:$GITHUB_PAT@github.com/Code9X/CICD-Jenkins-Docker.git .'
+                    bat '''
+                    echo "Cloning repository..."
+                    git clone https://%GITHUB_USER%:%GITHUB_PAT%@github.com/Code9X/CICD-Jenkins-Docker.git .
+                    '''
                 }
             }
         }
 
         stage('Build Frontend (React)') {
             steps {
-                script {
-                    docker.image('node:20').inside {
-                        sh '''
-                        echo "Installing React dependencies..."
-                        npm install
-                        echo "Building React frontend..."
-                        npm run build
-                        '''
-                    }
-                }
+                bat '''
+                echo "Installing React dependencies..."
+                npm install
+                echo "Building React frontend..."
+                npm run build
+                '''
             }
         }
 
         stage('Build Backend (.NET)') {
             steps {
-                script {
-                    docker.image('mcr.microsoft.com/dotnet/sdk:8.0').inside {
-                        sh '''
-                        echo "Restoring .NET dependencies..."
-                        dotnet restore
-                        echo "Building .NET backend..."
-                        dotnet build --configuration Release
-                        echo "Publishing .NET application..."
-                        dotnet publish -c Release -o out
-                        '''
-                    }
-                }
+                bat '''
+                echo "Restoring .NET dependencies..."
+                dotnet restore
+                echo "Building .NET backend..."
+                dotnet build --configuration Release
+                '''
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                sh '''
+                bat '''
                 echo "Building Docker images..."
-                docker build -t $DOCKER_HUB_USER/bookingwiz-frontend:latest -f BookingWiz_Web/Dockerfile .
-                docker build -t $DOCKER_HUB_USER/bookingwiz-admin:latest -f BookingWiz_Admin/Dockerfile .
+                docker build -t %DOCKER_IMAGE_FRONTEND% -f BookingWiz_Web/Dockerfile .
+                docker build -t %DOCKER_IMAGE_BACKEND% -f BookingWiz_Admin/Dockerfile .
                 '''
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                echo 'Deploying to Kubernetes (Placeholder - Will be implemented after Kubeconfig setup)'
+                bat '''
+                echo "Deploying to Kubernetes..."
+                kubectl apply -f k8s/
+                '''
             }
         }
     }
 
     post {
         always {
-            sh '''
-            echo "Cleaning up unused Docker resources..."
-            docker system prune -f
-            '''
+            bat 'echo "Pipeline finished with status: ${currentBuild.currentResult}"'
+        }
+        success {
+            bat 'echo "Build and deployment successful!"'
+        }
+        failure {
+            bat 'echo "Build failed! Check logs for details."'
         }
     }
 }
