@@ -14,7 +14,12 @@ pipeline {
             }
         }
 
-        stage('Build React Frontend') {
+        stage('Build Frontend (React)') {
+            agent {
+                docker {
+                    image 'node:20'
+                }
+            }
             steps {
                 dir('BookingWiz_Web') {
                     sh '''
@@ -27,7 +32,12 @@ pipeline {
             }
         }
 
-        stage('Build .NET Backend') {
+        stage('Build Backend (.NET)') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/dotnet/sdk:8.0'
+                }
+            }
             steps {
                 dir('BookingWiz_Admin') {
                     sh '''
@@ -47,49 +57,14 @@ pipeline {
                 sh '''
                 echo "Building Docker images..."
                 docker build -t $DOCKER_HUB_USER/bookingwiz-frontend:latest -f BookingWiz_Web/Dockerfile .
-                docker build -t $DOCKER_HUB_USER/bookingwiz_admin:latest -f BookingWiz_Admin/Dockerfile .
+                docker build -t $DOCKER_HUB_USER/bookingwiz-admin:latest -f BookingWiz_Admin/Dockerfile .
                 '''
             }
         }
 
-        stage('Push Docker Images') {
+        stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([string(credentialsId: 'docker-hub-password', variable: 'DOCKER_PASS')]) {
-                    sh '''
-                    echo "Logging into DockerHub..."
-                    echo $DOCKER_PASS | docker login -u $DOCKER_HUB_USER --password-stdin
-
-                    echo "Pushing Docker images..."
-                    docker push $DOCKER_HUB_USER/bookingwiz-frontend:latest
-                    docker push $DOCKER_HUB_USER/bookingwiz_admin:latest
-                    '''
-                }
-            }
-        }
-
-        stage('Deploy without Docker Compose') {
-            steps {
-                sh '''
-                echo "Stopping existing frontend container..."
-                docker stop bookingwiz-frontend || true
-                docker rm bookingwiz-frontend || true
-
-                echo "Pulling new frontend image..."
-                docker pull $DOCKER_HUB_USER/bookingwiz-frontend:latest
-
-                echo "Running frontend container..."
-                docker run -d -p 3000:80 --name bookingwiz-frontend $DOCKER_HUB_USER/bookingwiz-frontend:latest
-
-                echo "Stopping existing backend container..."
-                docker stop bookingwiz-backend || true
-                docker rm bookingwiz-backend || true
-
-                echo "Pulling new backend image..."
-                docker pull $DOCKER_HUB_USER/bookingwiz_admin:latest
-
-                echo "Running backend container..."
-                docker run -d -p 7001:8080 --name bookingwiz-backend -v $(pwd)/Images:/app/Images $DOCKER_HUB_USER/bookingwiz_admin:latest
-                '''
+                echo 'Deploying to Kubernetes (Placeholder - Will be implemented after Kubeconfig setup)'
             }
         }
     }
