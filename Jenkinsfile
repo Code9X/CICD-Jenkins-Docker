@@ -10,49 +10,67 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PAT')]) {
-                    powershell "git clone https://%GITHUB_USER%:%GITHUB_PAT%@github.com/Code9X/CICD-Jenkins-Docker.git ."
-                }
+                // Use `checkout scm` for better integration with Jenkins SCM
+                checkout scm
             }
         }
 
         stage('Build Frontend (React)') {
+            agent {
+                docker {
+                    image 'node:18' // Use Node.js Docker image for consistent builds
+                    args '-v $HOME/.npm:/root/.npm' // Cache npm packages
+                }
+            }
             steps {
-                powershell "npm install"
-                powershell "npm run build"
+                sh 'npm install'
+                sh 'npm run build'
             }
         }
 
         stage('Build Backend (.NET)') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/dotnet/sdk:7.0' // Use .NET SDK Docker image
+                }
+            }
             steps {
-                powershell "dotnet restore"
-                powershell "dotnet build --configuration Release"
+                sh 'dotnet restore'
+                sh 'dotnet build --configuration Release'
+                sh 'dotnet test' // Add tests if applicable
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                powershell "docker build -t %DOCKER_IMAGE_FRONTEND% -f BookingWiz_Web/Dockerfile ."
-                powershell "docker build -t %DOCKER_IMAGE_BACKEND% -f BookingWiz_Admin/Dockerfile ."
+                script {
+                    // Build frontend image
+                    docker.build("${DOCKER_IMAGE_FRONTEND}", '-f BookingWiz_Web/Dockerfile .')
+
+                    // Build backend image
+                    docker.build("${DOCKER_IMAGE_BACKEND}", '-f BookingWiz_Admin/Dockerfile .')
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                powershell "kubectl apply -f k8s/"
+                echo 'Skipping Kubernetes deployment for now.'
             }
         }
     }
 
     post {
         always {
-            powershell "echo Pipeline finished with status: $LASTEXITCODE"
+            cleanWs() // Clean workspace after build
         }
         success {
-            powershell "echo Build and deployment successful!"
+            echo 'Build successful! Kubernetes deployment skipped.'
+            // Optional: Send success notification (e.g., Slack, email)
         }
         failure {
-            powershell "echo Build failed! Check logs for details."
+            echo 'Build failed! Check logs for details.'
+            // Optional: Send failure notification (e.g., Slack, email)
         }
     }
 }
