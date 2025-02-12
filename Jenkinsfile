@@ -10,7 +10,6 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                // Use `checkout scm` for better integration with Jenkins SCM
                 checkout scm
             }
         }
@@ -18,7 +17,7 @@ pipeline {
         stage('Build Frontend (React)') {
             agent {
                 docker {
-                    image 'node:18' // Use Node.js Docker image for consistent builds
+                    image 'node:18' // Use Node.js Docker image
                     args '-v $HOME/.npm:/root/.npm' // Cache npm packages
                 }
             }
@@ -66,11 +65,9 @@ pipeline {
         }
         success {
             echo 'Build successful! Kubernetes deployment skipped.'
-            // Optional: Send success notification (e.g., Slack, email)
         }
         failure {
             echo 'Build failed! Check logs for details.'
-            // Optional: Send failure notification (e.g., Slack, email)
         }
     }
 }
